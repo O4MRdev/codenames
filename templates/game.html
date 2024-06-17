@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=0.5">
+<title>Codenames</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap");
+
+  html {
+    box-sizing: border-box;
+  }
+
+  *,
+  *:before,
+  *:after {
+    box-sizing: inherit;
+  }
+
+  body {
+    padding: 1.5rem;
+    background:  #243b55;
+    font-family: 'Poppins', sans-serif;
+  }
+  section {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+  }
+  .game-board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    max-width: 850px;
+    margin: 0 auto;
+  }
+
+  .game-card {
+    perspective: 1000px;
+    font-size: 20px;
+    margin-bottom: 25px;
+    height: 100px;
+  }
+
+  .game-card:not(.game-card--revealed):hover .game-card__front {
+    box-shadow: 0 0 6px 3px rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+    transition: box-shadow 400ms, transform 400ms;
+  }
+
+  .game-card.game-card--revealed .game-card__flipper {
+    transform: rotateY(180deg);
+  }
+
+  .game-card__flipper {
+    transition: 450ms;
+    transform-style: preserve-3d;
+    position: relative;
+    height: 100px;
+    width: 100%;
+  }
+
+  .game-card__front,
+  .game-card__back {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5em;
+  }
+
+  .game-card__back {
+    transform: rotateY(180deg);
+    background: #7d5a5a url("https://www.bko-kfm.de/_Resources/Static/Packages/Obis.Site/Images/kbko.png") repeat center;
+  }
+
+  .game-card[data-card-color=red] .game-card__back {
+    background-color: #d63447;
+  }
+
+  .game-card[data-card-color=blue] .game-card__back {
+    background-color: #1f4068;
+  }
+
+  .game-card[data-card-color=death] .game-card__back {
+    background-color: #333;
+  }
+
+  .game-card__front {
+    background: #f8f3eb;
+    border: 0;
+    font-size: inherit;
+    font-family: inherit;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transform: rotateY(0deg);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .game-card__word {
+    color: #7d5a5a;
+    text-align: center;
+    width: 100%;
+  }
+
+  .match-container {
+    width: 90%;
+    max-width: 600px;
+    height: auto; /* Adjust height to auto */
+  }
+
+  .match {
+    background-color: var(--color-bg-primary);
+    border-radius: 10px;
+    box-shadow: 0 0 2px 0 rgba(48, 48, 48, 0.1), 0 4px 4px 0 rgba(48, 48, 48, 0.1);
+    width: 100%;
+    height: 100%; /* Match parent height */
+  }
+
+  .match-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 2px solid rgba(48, 48, 48, 0.1);
+    padding: 16px;
+  }
+
+  .match-status {
+    background-color: var(--color-bg-alert);
+    color: var(--color-text-alert);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    margin-right: auto;
+  }
+
+  .match-status:before {
+    content: "";
+    display: block;
+    width: 6px;
+    height: 6px;
+    background-color: currentColor;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+
+  .match-tournament {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    text-align: center; /* Centering the text */
+    margin-top: 16px; /* Add margin to create space */
+  }
+
+  *,
+  *:after,
+  *:before {
+    box-sizing: border-box;
+  }
+
+  :root {
+    --color-text-primary: #1c2a38;
+    --color-text-secondary: #8A8F98;
+    --color-text-alert: #d72641;
+    --color-text-icon: #dbdade;
+    --color-bg-primary: #fff;
+    --color-bg-secondary: #f3f5f9;
+    --color-bg-alert: #fdeaec;
+    --color-theme-primary: #623ce6;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  .match-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center the match content */
+    align-items: center;
+    padding: 20px;
+    height: 100%; /* Match parent height */
+  }
+
+  .column {
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 33.33%;
+  }
+
+  .team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .team-logo {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--color-bg-primary);
+    box-shadow: 0 4px 4px 0 rgba(48, 48, 48, 0.15), 0 0 0 15px var(--color-bg-secondary);
+  }
+
+  .team-logo img {
+    width: 50px;
+  }
+
+  .team-name1 {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .match-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-top: 12px;
+  }
+
+  .match-date {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .match-date strong {
+    color: var(--color-text-primary);
+  }
+
+  .match-score {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  .match-score-number {
+    font-size: 48px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .match-score-number--leading {
+    color: var(--color-theme-primary);
+  }
+
+  .match-score-divider {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-icon);
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .match-time-lapsed {
+    color: #DF9443;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Media Query for smaller devices */
+  @media (max-width: 600px) {
+    .match-container {
+      width: 80%;
+    }
+
+    .column {
+      max-width: 100%;
+    }
+  }
+
+  .card1 {
+    width: 200px;
+    height: 300px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    position: relative;
+  }
+
+  .red-team {
+    background-color: #cc091a;
+  }
+
+  .blue-team {
+    background-color: #076c91;
+  }
+
+  .team-name {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+  }
+
+  .members-list {
+    list-style-type: none;
+    padding: 0;
+    text-align: center;
+  }
+
+  .members-list li {
+    margin-bottom: 5px;
+  }
+
+  section#gamelog {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    height: 100vh;
+  }
+
+  #chat-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: stretch;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f0f0f0;
+    margin: 20px;
+    height: 300px; /* Match the height of the cards */
+  }
+
+  #chatlog {
+    overflow-y: auto;
+    border-radius: 10px;
+    background-color: #ffffff;
+    padding: 10px;
+    flex-grow: 1;
+  }
+  
+  #chatlog .message {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 16px;
+    display: inline-block;
+    max-width: 70%;
+    word-wrap: break-word;
+  }
+  
+  #chatlog .message.right {
+    background-color: #DCF8C6;
+    align-self: flex-end;
+    color: #000;
+  }
+  
+  #chatlog .message.left {
+    background-color: #f2f2f2;
+    align-self: flex-start;
+    color: #000;
+  }
+
+  .input-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .input-box input[type="text"] {
+    padding: 6px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 5px;
+  }
+
+  .input-box input[type="text"].small {
+    width: 40px;
+  }
+
+  .input-box button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .input-box button:hover {
+    background-color: #45a049;
+  }
+
+  #endGuessingBtn {
+    background-color: #cc091a;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    align-self: center;
+    margin-top: 10px;
+  }
+
+  #endGuessingBtn:hover {
+    background-color: #aa0718;
+  }
+
+  .error-popup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #f44336;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+
+<main class="game-board"></main>
+<section id="gamelog">
+  <div class="card1 red-team">
+    <div class="team-name">Red Team</div>
+    <ul class="members-list" id="red-team-list">
+      <!-- Red team members will be injected here -->
+    </ul>
+  </div>
+  
+  <div id="chat-container">
+    <div class="input-box">
+      <input type="text" id="messageInput" placeholder="Type your message..." required>
+      <input type="number" id="hintInput" placeholder="Hint number" required>
+      <button id="sendButton">Send</button>
+    </div>
+    <div id="chatlog">
+      <!-- Messages will be displayed here -->
+    </div>
+    <button id="endGuessingBtn">End Guessing</button>
+  </div>
+  
+  <div class="card1 blue-team">
+    <div class="team-name">Blue Team</div>
+    <ul class="members-list" id="blue-team-list">
+      <!-- Blue team members will be injected here -->
+    </ul>
+  </div>
+</section>
+<section>
+  <div class="match-container">
+    <div class="match">
+        <div class="match-header">
+            <div class="match-status">Live</div>
+            <div class="match-tournament">CODENAMES</div>
+        </div>
+        <div class="match-content">
+            <div class="column">
+                <div class="team team--home">
+                    <div class="team-logo">
+                        <img src="https://i.ibb.co/qYTs875/soccer-player-3.png" alt="Team Logo" />
+                    </div>
+                    <h2 class="team-name1">Rotes Team</h2>
+                </div>
+            </div>
+            <div class="column">
+                <div class="match-details">
+                    <div class="match-date">
+                        <!-- Replace with real date and time -->
+                        <script>
+                            document.write(new Date().toLocaleDateString('de-DE') + ' um ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
+                        </script>
+                    </div>
+                    <div class="match-score">
+                        <span class="match-score-number match-score-number--leading" id="red-score">8</span>
+                        <span class="match-score-divider">:</span>
+                        <span class="match-score-number" id="blue-score">9</span>
+                    </div>
+                    <div class="match-time-lapsed" id="match-timer">
+                        0:00
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="team team--away">
+                    <div class="team-logo">
+                        <img src="https://i.ibb.co/ygcPMrP/soccer-player-2.png" alt="Team Logo" />
+                    </div>
+                    <h2 class="team-name1">Blaues Team</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+</section>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    let minutes = 0;
+    let seconds = 0;
+    const timerElement = document.getElementById("match-timer");
+
+    function updateTimer() {
+      seconds++;
+      if (seconds === 60) {
+        seconds = 0;
+        minutes++;
+      }
+      timerElement.textContent = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+    }
+
+    setInterval(updateTimer, 1000);
+
+    // Initialize the state of each card
+    let cardState = {};
+
+    // Fetch team info and scores from Flask app
+    function fetchTeamInfoAndScores() {
+      axios.get('http://127.0.0.1:5000/get_team_info_and_scores')
+        .then(response => {
+          const data = response.data;
+          if (data.error) {
+            showErrorPopup(data.error);
+            return;
+          }
+
+          const redTeamList = document.getElementById('red-team-list');
+          const blueTeamList = document.getElementById('blue-team-list');
+
+          // Populate red team members
+          redTeamList.innerHTML = '';
+          data.red_team.forEach(member => {
+            const listItem = document.createElement('li');
+            listItem.textContent = member;
+            redTeamList.appendChild(listItem);
+          });
+
+          // Populate blue team members
+          blueTeamList.innerHTML = '';
+          data.blue_team.forEach(member => {
+            const listItem = document.createElement('li');
+            listItem.textContent = member;
+            blueTeamList.appendChild(listItem);
+          });
+
+          // Update scores
+          document.getElementById('red-score').textContent = data.red_score;
+          document.getElementById('blue-score').textContent = data.blue_score;
+
+          // Set game board words and initialize card states
+          const gameBoard = document.querySelector('.game-board');
+          gameBoard.innerHTML = '';
+          data.words.forEach((word, index) => {
+            cardState[index] = word.clicked; // Initialize each card state
+            const template = `
+              <section class="game-card ${word.clicked ? 'game-card--revealed' : ''}" data-card-color="${word.type}" data-card-index="${index}">
+                <div class="game-card__flipper">
+                  <button class="game-card__front">
+                    <span class="game-card__inner">
+                      <span class="game-card__word" style="display: ${word.clicked ? 'none' : 'block'};">${word.text}</span>
+                    </span>
+                  </button>
+                  <div class="game-card__back"></div>
+                </div>
+              </section>
+            `;
+            gameBoard.innerHTML += template;
+          });
+
+          // Add event listeners for the game cards
+          document.querySelectorAll('.game-card__front').forEach(el => {
+            el.addEventListener('click', function () {
+              const cardIndex = this.parentElement.parentElement.getAttribute('data-card-index');
+              if (!cardState[cardIndex]) {
+                cardState[cardIndex] = true;
+                axios.post('http://127.0.0.1:5000/update_word', { index: cardIndex })
+                  .then(response => {
+                    if (response.data.error) {
+                      showErrorPopup(response.data.error);
+                    } else {
+                      // Fetch the updated state to reflect changes across all clients
+                      fetchTeamInfoAndScores();
+                    }
+                  })
+                  .catch(error => {
+                    showErrorPopup('Error updating word state');
+                  });
+              }
+            });
+          });
+        })
+        .catch(error => {
+          showErrorPopup('Error fetching team info and scores');
+        });
+    }
+
+    // Fetch messages from Flask app
+    function fetchMessages() {
+      axios.get('http://127.0.0.1:5000/get_messages')
+        .then(response => {
+          const messages = response.data;
+          const chatlog = document.getElementById('chatlog');
+          chatlog.innerHTML = '';  // Clear chat log
+          messages.forEach(msg => {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${msg.chat_name === getChatName() ? 'right' : 'left'}`;
+            messageElement.textContent = `${msg.chat_name}: ${msg.message}`;
+            chatlog.appendChild(messageElement);
+          });
+          chatlog.scrollTop = chatlog.scrollHeight;  // Scroll to the bottom
+        })
+        .catch(error => {
+          showErrorPopup('Error fetching messages');
+        });
+    }
+
+    // Send message to Flask app
+    function sendMessage(message, hint) {
+      axios.post('http://127.0.0.1:5000/send_message', { message, hint })
+        .then(response => {
+          if (response.data.error) {
+            showErrorPopup(response.data.error);
+          } else {
+            fetchMessages();  // Refresh chat log after sending a message
+          }
+        })
+        .catch(error => {
+          showErrorPopup('Error sending message');
+        });
+    }
+
+    // Get chat name from cookie
+    function getChatName() {
+      const name = "chat_name=";
+      const decodedCookie = decodeURIComponent(document.cookie);
+      const ca = decodedCookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+        }
+      }
+      return "";
+    }
+
+    // Handle send button click
+    document.getElementById('sendButton').addEventListener('click', () => {
+      const messageInput = document.getElementById('messageInput');
+      const hintInput = document.getElementById('hintInput');
+      const message = messageInput.value;
+      const hint = hintInput.value;
+      if (message && hint) {
+        sendMessage(message, hint);
+        messageInput.value = '';  // Clear input field
+        hintInput.value = '';  // Clear hint input field
+      }
+    });
+
+    // Show error pop-up
+    function showErrorPopup(message) {
+      const errorPopup = document.createElement('div');
+      errorPopup.className = 'error-popup';
+      errorPopup.textContent = message;
+      document.body.appendChild(errorPopup);
+      setTimeout(() => {
+        document.body.removeChild(errorPopup);
+      }, 3000); // Hide after 3 seconds
+    }
+
+    // Fetch messages every 2 seconds
+    setInterval(fetchMessages, 2000);
+
+    // Fetch team info and scores every 10 seconds
+    setInterval(fetchTeamInfoAndScores, 10000);
+
+    // Initial fetch of messages and team info and scores
+    fetchMessages();
+    fetchTeamInfoAndScores();
+  });
+
+  // Refresh the entire page every 5 minutes (300,000 milliseconds)
+  setTimeout(() => {
+    location.reload();
+  }, 30000); // 5 minutes
+</script>
+</body>
+</html>
